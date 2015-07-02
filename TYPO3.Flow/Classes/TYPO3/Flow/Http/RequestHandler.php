@@ -73,7 +73,7 @@ class RequestHandler implements HttpRequestHandlerInterface {
 	 * @api
 	 */
 	public function canHandleRequest() {
-		return (PHP_SAPI !== 'cli');
+		return (FLOW_OVERRIDDEN_PHP_SAPI !== 'cli');
 	}
 
 	/**

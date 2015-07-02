@@ -64,7 +64,7 @@ class CommandRequestHandler implements RequestHandlerInterface {
 	 * @return boolean If the request is a CLI request, TRUE otherwise FALSE
 	 */
 	public function canHandleRequest() {
-		return (PHP_SAPI === 'cli');
+		return (FLOW_OVERRIDDEN_PHP_SAPI === 'cli');
 	}
 
 	/**

@@ -11,6 +11,7 @@ namespace TYPO3\Flow\Cli;
  * The TYPO3 project - inspiring people to share!                         *
  *                                                                        */
 
+use Symfony\Component\Console\Output\StreamOutput;
 use TYPO3\Flow\Annotations as Flow;
 use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 use Symfony\Component\Console\Helper\DialogHelper;
@@ -49,7 +50,8 @@ class ConsoleOutput {
 	 * Creates and initializes the SymfonyConsoleOutput instance
 	 */
 	public function __construct() {
-		$this->output = new SymfonyConsoleOutput();
+
+		$this->output = new StreamOutput(fopen((PHP_SAPI === 'cli' ? 'php://stdout' : 'php://output'), 'w'));
 		$this->output->getFormatter()->setStyle('b', new OutputFormatterStyle(NULL, NULL, array('bold')));
 		$this->output->getFormatter()->setStyle('i', new OutputFormatterStyle('black', 'white'));
 		$this->output->getFormatter()->setStyle('u', new OutputFormatterStyle(NULL, NULL, array('underscore')));

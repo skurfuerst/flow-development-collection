@@ -516,7 +516,13 @@ class Scripts {
 	 * @throws \TYPO3\Flow\Core\Booting\Exception\SubProcessException if execution of the sub process failed
 	 */
 	static public function executeCommand($commandIdentifier, array $settings, $outputResults = TRUE, array $commandArguments = array()) {
+
+		return self::executeCommandThroughWeb($commandIdentifier, $commandArguments, $settings['core']['context']);
+		return TRUE;
+
 		$command = self::buildSubprocessCommand($commandIdentifier, $settings, $commandArguments);
+
+
 		$output = array();
 		exec($command, $output, $result);
 		if ($result !== 0) {
@@ -531,6 +537,49 @@ class Scripts {
 			echo implode(PHP_EOL, $output);
 		}
 		return $result === 0;
+	}
+
+	static public function executeCommandThroughWeb($commandIdentifier, $commandArguments, $flowContextString) {
+		$argv = $commandArguments;
+		array_unshift($argv, $commandIdentifier);
+		array_unshift($argv, 'php-fake');
+		// Get cURL resource
+		$curl = curl_init();
+		$data = array(
+			'FLOW_ROOTPATH' => FLOW_PATH_ROOT,
+			'FLOW_CONTEXT' => $flowContextString,
+			'argv' => json_encode($argv),
+			'time' => time() // prevent replay attacks
+		);
+
+		$cliKeyPathAndFilename = FLOW_PATH_CONFIGURATION . '/CliKey.php';
+		if (!file_exists($cliKeyPathAndFilename)) {
+			// Deliberately use a PHP script here, so that even if it is all in web root, the cli key cannot be read.
+			file_put_contents($cliKeyPathAndFilename, '<?php $cliKey = \'' . bin2hex(\TYPO3\Flow\Utility\Algorithms::generateRandomBytes(96)) . '\'; $url = \'' . $_SERVER['SERVER_NAME'] . str_replace('index.php', 'cliEndpoint.php', $_SERVER['PHP_SELF']) . '\';');
+		}
+
+		include($cliKeyPathAndFilename);
+
+		$hash = hash_hmac('sha1', json_encode($data), $cliKey);
+		$data['hash'] = $hash;
+
+// Set some options - we are passing in a useragent too here
+		curl_setopt_array($curl, array(
+			CURLOPT_RETURNTRANSFER => 1,
+			CURLOPT_URL => $url,
+			CURLOPT_POST => 1,
+			CURLOPT_POSTFIELDS => $data
+		));
+
+		//echo http_build_query($data);
+		//die();
+// Send the request & save response to $resp
+		$resp = curl_exec($curl);
+// Close request to clear up some resources
+		curl_close($curl);
+		echo $resp;
+
+		return TRUE;
 	}
 
 	/**
