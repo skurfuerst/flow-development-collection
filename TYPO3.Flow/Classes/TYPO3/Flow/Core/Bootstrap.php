@@ -456,7 +456,10 @@ class Bootstrap {
 			return;
 		}
 
-		define('FLOW_SAPITYPE', (PHP_SAPI === 'cli' ? 'CLI' : 'Web'));
+		if (!defined('FLOW_OVERRIDDEN_PHP_SAPI')) {
+			define('FLOW_OVERRIDDEN_PHP_SAPI', PHP_SAPI);
+		}
+		define('FLOW_SAPITYPE', (FLOW_OVERRIDDEN_PHP_SAPI === 'cli' ? 'CLI' : 'Web'));
 
 		if (!defined('FLOW_PATH_FLOW')) {
 			define('FLOW_PATH_FLOW', str_replace('//', '/', str_replace('\\', '/', __DIR__ . '/../../../../')));
