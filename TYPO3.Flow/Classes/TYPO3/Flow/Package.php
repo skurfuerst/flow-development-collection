@@ -125,5 +125,10 @@ class Package extends BasePackage
         $dispatcher->connect('TYPO3\Flow\Package\PackageManager', 'packageStatesUpdated', function () use ($dispatcher) {
             $dispatcher->connect('TYPO3\Flow\Core\Bootstrap', 'bootstrapShuttingDown', 'TYPO3\Flow\Cache\CacheManager', 'flushCaches');
         });
+
+        $dispatcher->connect(
+            'TYPO3\Flow\Security\Context', 'readyToBeInitialized',
+            'TYPO3\Flow\Persistence\Doctrine\EntityManagerFactory', 'initializeEnabledFilterInstances'
+        );
     }
 }

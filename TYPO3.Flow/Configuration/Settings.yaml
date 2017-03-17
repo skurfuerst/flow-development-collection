@@ -257,6 +257,9 @@ TYPO3:
         # By default Doctrine proxy compilation is done in the Flow bootstrap
         enable: TRUE
         sqlLogger: NULL
+
+        # All filters listed here should implement EarlyParameterInitializationSqlFilterInterface, to ensure they are
+        # correctly initialized
         filters:
           Flow_Security_Entity_Filter: 'TYPO3\Flow\Security\Authorization\Privilege\Entity\Doctrine\SqlFilter'
 

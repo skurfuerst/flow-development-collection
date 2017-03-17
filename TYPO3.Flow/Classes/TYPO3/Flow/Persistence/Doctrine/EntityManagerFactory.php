@@ -19,6 +19,7 @@ use Doctrine\DBAL\Logging\SQLLogger;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\Query\Filter\SQLFilter;
 use TYPO3\Flow\Annotations as Flow;
 use TYPO3\Flow\Cache\CacheManager;
 use TYPO3\Flow\Configuration\Exception\InvalidConfigurationException;
@@ -26,6 +27,7 @@ use TYPO3\Flow\Object\ObjectManagerInterface;
 use TYPO3\Flow\Persistence\Doctrine\Mapping\Driver\FlowAnnotationDriver;
 use TYPO3\Flow\Persistence\Exception\IllegalObjectTypeException;
 use TYPO3\Flow\Reflection\ReflectionService;
+use TYPO3\Flow\Security\Authorization\Privilege\Entity\Doctrine\EarlyParameterInitializationSqlFilterInterface;
 use TYPO3\Flow\Utility\Environment;
 use TYPO3\Flow\Utility\Files;
 
@@ -58,6 +60,11 @@ class EntityManagerFactory
      * @var array
      */
     protected $settings = [];
+
+    /**
+     * @var SQLFilter[]
+     */
+    protected $enabledFilterInstances = [];
 
     /**
      * Injects the Flow settings, the persistence part is kept
@@ -146,7 +153,7 @@ class EntityManagerFactory
         if (isset($this->settings['doctrine']['filters']) && is_array($this->settings['doctrine']['filters'])) {
             foreach ($this->settings['doctrine']['filters'] as $filterName => $filterClass) {
                 $config->addFilter($filterName, $filterClass);
-                $entityManager->getFilters()->enable($filterName);
+                $this->enabledFilterInstances[$filterName] = $entityManager->getFilters()->enable($filterName);
             }
         }
 
@@ -155,6 +162,14 @@ class EntityManagerFactory
         }
 
         return $entityManager;
+    }
+
+    /**
+     * @return SQLFilter[]
+     */
+    public function getEnabledFilterInstances()
+    {
+        return $this->enabledFilterInstances;
     }
 
     /**
@@ -202,6 +217,19 @@ class EntityManagerFactory
         }
         if (isset($configuredSettings['customDatetimeFunctions'])) {
             $doctrineConfiguration->setCustomDatetimeFunctions($configuredSettings['customDatetimeFunctions']);
+        }
+    }
+
+    /**
+     * Initialize the configured filter instances; so that they can call setParameter(). Called through signal/slots as soon as the
+     * security context is initializeable; so that parameters can e.g. depend on the current user.
+     */
+    public function initializeEnabledFilterInstances()
+    {
+        foreach ($this->enabledFilterInstances as $filter) {
+            if ($filter instanceof EarlyParameterInitializationSqlFilterInterface) {
+                $filter->initializeParameters();
+            }
         }
     }
 }

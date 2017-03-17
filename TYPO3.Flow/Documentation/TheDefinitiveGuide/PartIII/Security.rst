@@ -1070,6 +1070,57 @@ entities. The following examples, taken from the functional tests, show some mor
    ``isType("Acme\MyPackage\EntityB")`` will never match. This is a limitation of the underlying Doctrine filter API.
 
 
+.. warning:: Custom Global Objects should implement CacheAwareInterface
+
+  If you have custom global objects (as exposed through `TYPO3.Flow.aop.globalObjects`) which depend on the current
+  user (security context), ensure they implement `CacheAwareInterface` and change depending on the relevant access
+  restrictions you want to provide.
+
+  The cache identifier for the global object will be included in the Security Context Hash, ensuring that the Doctrine
+  query cache and all other places caching with security in mind will correctly create separate cache entries for the
+  different access restrictions you want to create.
+
+  As an example, if your user has a "company" assigned, and depending on the company, your should only see your
+  "own" records, you need to: Implement a custom context object, register it in `TYPO3.Flow.aop.globalObjects`
+  and make it implement `CacheAwareInterface`::
+
+    /**
+     * @Flow\Scope("singleton")
+     */
+    class UserInformationContext implements CacheAwareInterface
+    {
+        /**
+         * @Flow\Inject
+         * @var Context
+         */
+        protected $securityContext;
+
+        /**
+         * @Flow\Inject
+         * @var PersistenceManagerInterface
+         */
+        protected $persistenceManager;
+
+        /**
+         * @return Company
+         */
+        public function getCompany() {
+            $account = $this->securityContext->getAccount();
+            $company = // find your $company depending on the account;
+            return $company;
+        }
+
+        /**
+         * @return string
+         */
+        public function getCacheEntryIdentifier()
+        {
+            $company = $this->getCompany();
+
+            return $this->persistenceManager->getIdentifierByObject($company);
+        }
+
+
 Internal workings of entity restrictions (EntityPrivilege)
 ----------------------------------------------------------------------
 
@@ -1085,6 +1136,15 @@ privilege target, this role will be able to retrieve the respective objects from
 override any GRANT permission, nothing new here. Internally we add SQL where conditions excluding matching entities for
 all privilege targets that are not granted to the current user.
 
+.. warning:: Custom SqlFilter implementations
+
+  If using custom SqlFilters, you are not allowed to call `setParameter` inside `addFilterConstraint`. If you do call it
+  only inside the addFilterConstraint method, the caching of SQL queries will not correctly work; leading to wrong access
+  restrictions being applied on the SQL level. This very likely means your users can see data not intended for them (e.g.
+  for different users etc).
+
+  Rather, you should implement `TYPO3\Flow\Security\Authorization\Privilege\Entity\Doctrine\EarlyParameterInitializationSqlFilterInterface`
+  in your custom SqlFilter, and call `setParameter()` in there instead of inside `addFilterConstraint`.
 
 Creating your custom privilege
 ==================================

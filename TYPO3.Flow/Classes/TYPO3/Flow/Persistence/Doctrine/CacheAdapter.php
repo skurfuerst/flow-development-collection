@@ -14,7 +14,6 @@ namespace TYPO3\Flow\Persistence\Doctrine;
 use Doctrine\Common\Cache\Cache;
 use TYPO3\Flow\Annotations as Flow;
 use TYPO3\Flow\Cache\Frontend\FrontendInterface;
-use TYPO3\Flow\Security\Context;
 
 /**
  * Cache adapter to use Flow caches as Doctrine cache
@@ -25,12 +24,6 @@ class CacheAdapter implements Cache
      * @var FrontendInterface
      */
     protected $cache;
-
-    /**
-     * @Flow\Inject
-     * @var Context
-     */
-    protected $securityContext;
 
     /**
      * Set the cache this adapter should use.
@@ -49,7 +42,7 @@ class CacheAdapter implements Cache
      */
     protected function convertCacheIdentifier($id)
     {
-        return md5($id . '|' . $this->securityContext->getContextHash());
+        return md5($id);
     }
 
     /**

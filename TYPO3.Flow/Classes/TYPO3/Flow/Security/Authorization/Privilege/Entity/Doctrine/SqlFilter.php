@@ -25,7 +25,7 @@ use TYPO3\Flow\Security\Authorization\Privilege\Entity\EntityPrivilegeInterface;
  *
  * @Flow\Proxy(false)
  */
-class SqlFilter extends DoctrineSqlFilter
+class SqlFilter extends DoctrineSqlFilter implements EarlyParameterInitializationSqlFilterInterface
 {
     /**
      * @var PolicyService
@@ -36,6 +36,24 @@ class SqlFilter extends DoctrineSqlFilter
      * @var Context
      */
     protected $securityContext;
+
+    public function initializeParameters()
+    {
+        $this->initializeDependencies();
+
+        if ($this->securityContext->areAuthorizationChecksDisabled()) {
+            return '';
+        }
+        if (!$this->securityContext->isInitialized()) {
+            if (!$this->securityContext->canBeInitialized()) {
+                return '';
+            }
+            $this->securityContext->initialize();
+        }
+
+        // This is needed to include the current context of roles into query cache identifier
+        $this->setParameter('__contextHash', $this->securityContext->getContextHash(), 'string');
+    }
 
     /**
      * Gets the SQL query part to add to a query.
@@ -63,9 +81,6 @@ class SqlFilter extends DoctrineSqlFilter
             }
             $this->securityContext->initialize();
         }
-
-        //This is needed to include the current context of roles into query cache identifier
-        $this->setParameter('__contextHash', $this->securityContext->getContextHash(), 'string');
 
         $sqlConstraints = [];
         $grantedConstraints = [];
